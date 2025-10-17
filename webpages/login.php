@@ -193,7 +193,7 @@ $conn->close();
 <body>
     <div class="login-container">
         <div class="login-header">
-            <h1>🗳️ Voting System</h1>
+            <h1>Voting System</h1>
             <p>Please login to continue</p>
         </div>
         
@@ -231,10 +231,6 @@ $conn->close();
             
             <button type="submit" class="btn-login">Login</button>
         </form>
-        
-        <div class="login-footer">
-            <p>Secure Voting System &copy; 2025</p>
-        </div>
     </div>
 </body>
 </html>

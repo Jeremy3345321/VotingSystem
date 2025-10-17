@@ -46,46 +46,4 @@ class Account {
             return false;
         }
     }
-
-    // Getters
-    getId() {
-        return this.accountId;
-    }
-
-    getPassword() {
-        return this.accountPassword;
-    }
-
-    getName() {
-        return this.accountName;
-    }
-
-    getRole() {
-        return this.accountRole;
-    }
-
-    getHasVoted() {
-        return this.hasVoted;
-    }
-
-    // Setters
-    setId(accountId) {
-        this.accountId = accountId;
-    }
-
-    setPassword(accountPassword) {
-        this.accountPassword = accountPassword;
-    }
-
-    setName(accountName) {
-        this.accountName = accountName;
-    }
-
-    setRole(role) {
-        this.accountRole = role;
-    }
-
-    setHasVoted(hasVoted) {
-        this.hasVoted = hasVoted;
-    }
 }

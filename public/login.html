@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voting System - Login</title>
+    <link rel="stylesheet" href="styles/login.css">
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-header">
+            <h1>Voting System</h1>
+            <p>Please login to continue</p>
+        </div>
+        
+        <div class="error-message" id="errorMessage"></div>
+        <div class="success-message" id="successMessage"></div>
+        
+        <form id="loginForm">
+            <div class="form-group">
+                <label for="account_id">Account ID</label>
+                <input 
+                    type="number" 
+                    id="account_id" 
+                    name="account_id" 
+                    placeholder="Enter your account ID"
+                    required
+                    autofocus
+                >
+            </div>
+            
+            <div class="form-group">
+                <label for="account_password">Password</label>
+                <input 
+                    type="password" 
+                    id="account_password" 
+                    name="account_password" 
+                    placeholder="Enter your password"
+                    required
+                >
+            </div>
+            
+            <button type="submit" class="btn-login" id="loginBtn">Login</button>
+        </form>
+        
+        <div class="login-footer">
+            Don't have an account? <a href="register.html">Register here</a>
+        </div>
+    </div>
+
+    <script src="scripts/login.js"></script>
+</body>
+</html>

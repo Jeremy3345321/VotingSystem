@@ -68,7 +68,7 @@ registerForm.addEventListener('submit', async (e) => {
         const data = await response.json();
 
         if (data.success) {
-            showSuccess(`Account created successfully! Your Account ID is: ${data.data.accountId}. Redirecting to login...`);
+            showSuccess(`Account created successfully! Redirecting to login...`);
             
             // Clear form
             registerForm.reset();
@@ -76,7 +76,7 @@ registerForm.addEventListener('submit', async (e) => {
             // Redirect to login after 3 seconds
             setTimeout(() => {
                 window.location.href = 'login.html';
-            }, 3000);
+            }, 2000);
         } else {
             showError(data.message || 'Registration failed. Please try again.');
         }

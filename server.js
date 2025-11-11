@@ -1,7 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
-const Database = require('./Database');
+const Database = require('./classes/Database');
 
 const app = express();
 const PORT = 3000;

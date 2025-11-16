@@ -1,3 +1,5 @@
+//register.js
+
 const registerForm = document.getElementById('registerForm');
 const errorMessage = document.getElementById('errorMessage');
 const successMessage = document.getElementById('successMessage');
@@ -68,7 +70,7 @@ registerForm.addEventListener('submit', async (e) => {
         const data = await response.json();
 
         if (data.success) {
-            showSuccess(`Account created successfully! Redirecting to login...`);
+            showSuccess(`Account created successfully! Redirecting...`);
             
             // Clear form
             registerForm.reset();

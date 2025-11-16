@@ -1,3 +1,5 @@
+//server.js
+
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
@@ -105,10 +107,14 @@ app.post('/api/accounts/register', async (req, res) => {
  * Body: { accountId, accountPassword }
  */
 app.post('/api/accounts/login', async (req, res) => {
+    console.log('=== Login Request ===');
+    console.log('Request body:', { accountId: req.body.accountId, hasPassword: !!req.body.accountPassword });
+    
     try {
         const { accountId, accountPassword } = req.body;
 
         if (!accountId || !accountPassword) {
+            console.log('✗ Missing credentials');
             return res.status(400).json({ 
                 success: false, 
                 message: 'Account ID and password are required' 
@@ -116,22 +122,26 @@ app.post('/api/accounts/login', async (req, res) => {
         }
 
         // Verify account using Database class
+        console.log('Verifying account:', accountId);
         const account = await Database.verifyAccount(accountId, accountPassword);
 
         if (!account) {
+            console.log('✗ Invalid credentials for account:', accountId);
             return res.status(401).json({ 
                 success: false, 
                 message: 'Invalid account ID or password' 
             });
         }
 
+        console.log('✓ Login successful for:', account.account_name, '(Role:', account.account_role, ')');
+        
         res.json({
             success: true,
             message: 'Login successful',
             data: {
                 accountId: account.account_id,
                 accountName: account.account_name,
-                accountRole: account.account_role,
+                accountRole: account.account_role.trim().toLowerCase(), // Normalize role
                 hasVoted: account.has_voted
             }
         });
@@ -218,6 +228,29 @@ app.get('/api/candidates', async (req, res) => {
 
     } catch (error) {
         console.error('Get candidates error:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Internal server error' 
+        });
+    }
+});
+
+/**
+ * Get candidates by position
+ * GET /api/candidates/position/:position
+ */
+app.get('/api/candidates/position/:position', async (req, res) => {
+    try {
+        const position = req.params.position;
+        const candidates = await Database.getCandidatesByPosition(position);
+
+        res.json({
+            success: true,
+            data: candidates
+        });
+
+    } catch (error) {
+        console.error('Get candidates by position error:', error);
         res.status(500).json({ 
             success: false, 
             message: 'Internal server error' 
@@ -325,10 +358,10 @@ app.post('/api/votes', async (req, res) => {
     } catch (error) {
         console.error('Vote error:', error);
         
-        if (error.message === 'Account has already voted') {
+        if (error.message.includes('already voted')) {
             return res.status(400).json({ 
                 success: false, 
-                message: 'You have already voted' 
+                message: error.message
             });
         }
 
@@ -354,6 +387,52 @@ app.get('/api/votes', async (req, res) => {
 
     } catch (error) {
         console.error('Get votes error:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Internal server error' 
+        });
+    }
+});
+
+/**
+ * Get votes by account (for checking which positions voted)
+ * GET /api/votes/account/:accountId
+ */
+app.get('/api/votes/account/:accountId', async (req, res) => {
+    try {
+        const accountId = parseInt(req.params.accountId);
+        const votes = await Database.getVotesByAccount(accountId);
+
+        res.json({
+            success: true,
+            data: votes
+        });
+
+    } catch (error) {
+        console.error('Get votes by account error:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Internal server error' 
+        });
+    }
+});
+
+/**
+ * Get positions voted by account
+ * GET /api/votes/account/:accountId/positions
+ */
+app.get('/api/votes/account/:accountId/positions', async (req, res) => {
+    try {
+        const accountId = parseInt(req.params.accountId);
+        const positions = await Database.getVotedPositions(accountId);
+
+        res.json({
+            success: true,
+            data: positions
+        });
+
+    } catch (error) {
+        console.error('Get voted positions error:', error);
         res.status(500).json({ 
             success: false, 
             message: 'Internal server error' 

@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voter Dashboard - Voting System</title>
+    <link rel="stylesheet" href="styles/dashboard.css">
+</head>
+<body>
+    <div class="dashboard-container">
+        <header class="dashboard-header">
+            <div class="header-content">
+                <h1>Student Council Elections</h1>
+                <div class="user-info">
+                    <span id="userName">Welcome, Voter</span>
+                    <button class="btn-logout" id="logoutBtn">Logout</button>
+                </div>
+            </div>
+        </header>
+
+        <main class="dashboard-main">
+            <div class="alert-container" id="alertContainer"></div>
+
+            <div class="voting-status" id="votingStatus">
+                <div class="status-card">
+                    <h2>Voting Progress</h2>
+                    <p id="statusMessage">Loading...</p>
+                    <div class="progress-bar-container" id="progressContainer" style="display: none;">
+                        <div class="progress-bar" id="progressBar"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="positions-container" id="positionsContainer">
+                <!-- President Section -->
+                <section class="position-section" id="section-President">
+                    <h2 class="position-title">
+                        President
+                        <span class="vote-indicator" id="indicator-President"></span>
+                    </h2>
+                    <div class="candidates-grid" id="presidentCandidates">
+                        <div class="loading">Loading candidates...</div>
+                    </div>
+                </section>
+
+                <!-- Vice President Section -->
+                <section class="position-section" id="section-VicePresident">
+                    <h2 class="position-title">
+                        Vice President
+                        <span class="vote-indicator" id="indicator-VicePresident"></span>
+                    </h2>
+                    <div class="candidates-grid" id="vicePresidentCandidates">
+                        <div class="loading">Loading candidates...</div>
+                    </div>
+                </section>
+
+                <!-- Secretary Section -->
+                <section class="position-section" id="section-Secretary">
+                    <h2 class="position-title">
+                        Secretary
+                        <span class="vote-indicator" id="indicator-Secretary"></span>
+                    </h2>
+                    <div class="candidates-grid" id="secretaryCandidates">
+                        <div class="loading">Loading candidates...</div>
+                    </div>
+                </section>
+
+                <!-- Treasurer Section -->
+                <section class="position-section" id="section-Treasurer">
+                    <h2 class="position-title">
+                        Treasurer
+                        <span class="vote-indicator" id="indicator-Treasurer"></span>
+                    </h2>
+                    <div class="candidates-grid" id="treasurerCandidates">
+                        <div class="loading">Loading candidates...</div>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <script src="scripts/voter-dashboard.js"></script>
+</body>
+</html>

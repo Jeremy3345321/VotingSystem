@@ -1,5 +1,7 @@
 const mysql = require('mysql2/promise');
 const bcrypt = require('bcrypt');
+const Account = require('./Account');
+const Candidate = require('./Candidate');
 
 // Database configuration
 const dbConfig = {
@@ -18,25 +20,35 @@ class Database {
 
     /**
      * Add a new account to the database
-     * @param {Object} account - Account object with accountName, accountPassword, accountRole
-     * @returns {Object} Account object with generated accountId
+     * @param {Object|Account} account - Account object or Account instance
+     * @returns {Object|Account} Account object with generated accountId
      */
     static async addAccount(account) {
         try {
+            // Convert Account instance to plain object if needed
+            const accountData = account instanceof Account ? account.toDatabaseObject() : account;
+            
             // Hash the password before storing
-            const hashedPassword = await bcrypt.hash(account.accountPassword, 10);
+            const hashedPassword = await bcrypt.hash(accountData.accountPassword, 10);
             
             const sql = 'INSERT INTO accounts (account_name, account_password, account_role, has_voted) VALUES (?, ?, ?, ?)';
             const [result] = await this.pool.execute(sql, [
-                account.accountName,
+                accountData.accountName,
                 hashedPassword,
-                account.accountRole || 'voter',
-                account.hasVoted || 0
+                accountData.accountRole || 'voter',
+                accountData.hasVoted || 0
             ]);
             
-            account.accountId = result.insertId;
-            console.log(`Account added: ${account.accountName} (ID: ${account.accountId})`);
-            return account;
+            // Update the account object with the new ID
+            if (account instanceof Account) {
+                account.accountId = result.insertId;
+                console.log(`Account added: ${account.accountName} (ID: ${account.accountId})`);
+                return account;
+            } else {
+                accountData.accountId = result.insertId;
+                console.log(`Account added: ${accountData.accountName} (ID: ${accountData.accountId})`);
+                return accountData;
+            }
         } catch (error) {
             console.error('Error adding account:', error.message);
             throw error;
@@ -45,26 +57,29 @@ class Database {
 
     /**
      * Update an existing account
-     * @param {Object} account - Account object with all properties including accountId
+     * @param {Object|Account} account - Account object or Account instance with all properties including accountId
      */
     static async updateAccount(account) {
         try {
+            // Convert Account instance to plain object if needed
+            const accountData = account instanceof Account ? account.toDatabaseObject() : account;
+            
             // If password is being updated, hash it
-            let passwordToStore = account.accountPassword;
-            if (account.accountPassword && !account.accountPassword.startsWith('$2b$')) {
-                passwordToStore = await bcrypt.hash(account.accountPassword, 10);
+            let passwordToStore = accountData.accountPassword;
+            if (accountData.accountPassword && !accountData.accountPassword.startsWith('$2b$')) {
+                passwordToStore = await bcrypt.hash(accountData.accountPassword, 10);
             }
             
             const sql = 'UPDATE accounts SET account_name = ?, account_password = ?, account_role = ?, has_voted = ? WHERE account_id = ?';
             await this.pool.execute(sql, [
-                account.accountName,
+                accountData.accountName,
                 passwordToStore,
-                account.accountRole,
-                account.hasVoted,
-                account.accountId
+                accountData.accountRole,
+                accountData.hasVoted,
+                accountData.accountId
             ]);
             
-            console.log(`Account updated: ${account.accountName}`);
+            console.log(`Account updated: ${accountData.accountName}`);
         } catch (error) {
             console.error('Error updating account:', error.message);
             throw error;
@@ -219,10 +234,26 @@ class Database {
         }
     }
 
+    /**
+     * Get candidates by position
+     * @param {string} position - The position (President, Vice President, Secretary, Treasurer)
+     * @returns {Array} Array of candidate objects for that position
+     */
+    static async getCandidatesByPosition(position) {
+        try {
+            const sql = 'SELECT * FROM candidates WHERE candidate_party = ? ORDER BY current_votes DESC';
+            const [rows] = await this.pool.execute(sql, [position]);
+            return rows;
+        } catch (error) {
+            console.error('Error getting candidates by position:', error.message);
+            throw error;
+        }
+    }
+
     // ==================== VOTE MANAGEMENT ====================
 
     /**
-     * Record a vote in the database
+     * Record a vote in the database (UPDATED for position-based voting)
      * @param {number} accountId - The voter's account ID
      * @param {number} candidateId - The candidate's ID
      * @returns {boolean} True if successful, false otherwise
@@ -233,18 +264,26 @@ class Database {
         try {
             await connection.beginTransaction();
 
-            // Check if account has already voted
-            const [account] = await connection.execute(
-                'SELECT has_voted FROM accounts WHERE account_id = ?',
-                [accountId]
+            // Get candidate information to determine position
+            const [candidate] = await connection.execute(
+                'SELECT candidate_party FROM candidates WHERE candidate_id = ?',
+                [candidateId]
             );
 
-            if (account.length === 0) {
-                throw new Error('Account not found');
+            if (candidate.length === 0) {
+                throw new Error('Candidate not found');
             }
 
-            if (account[0].has_voted) {
-                throw new Error('Account has already voted');
+            const position = candidate[0].candidate_party;
+
+            // Check if account has already voted for this position
+            const [existingVote] = await connection.execute(
+                'SELECT v.vote_id FROM votes v JOIN candidates c ON v.candidate_id = c.candidate_id WHERE v.account_id = ? AND c.candidate_party = ?',
+                [accountId, position]
+            );
+
+            if (existingVote.length > 0) {
+                throw new Error(`You have already voted for ${position}`);
             }
 
             // Record the vote
@@ -259,14 +298,26 @@ class Database {
                 [candidateId]
             );
 
-            // Mark account as voted
-            await connection.execute(
-                'UPDATE accounts SET has_voted = 1 WHERE account_id = ?',
+            // Check if user has voted for all positions
+            const [voteCount] = await connection.execute(
+                'SELECT COUNT(DISTINCT c.candidate_party) as voted_positions FROM votes v JOIN candidates c ON v.candidate_id = c.candidate_id WHERE v.account_id = ?',
                 [accountId]
             );
 
+            const [totalPositions] = await connection.execute(
+                'SELECT COUNT(DISTINCT candidate_party) as total_positions FROM candidates'
+            );
+
+            // If voted for all positions, mark account as fully voted
+            if (voteCount[0].voted_positions >= totalPositions[0].total_positions) {
+                await connection.execute(
+                    'UPDATE accounts SET has_voted = 1 WHERE account_id = ?',
+                    [accountId]
+                );
+            }
+
             await connection.commit();
-            console.log(`Vote recorded: Account ${accountId} voted for Candidate ${candidateId}`);
+            console.log(`Vote recorded: Account ${accountId} voted for Candidate ${candidateId} (${position})`);
             return true;
         } catch (error) {
             await connection.rollback();
@@ -278,12 +329,63 @@ class Database {
     }
 
     /**
+     * Get all votes for a specific account
+     * @param {number} accountId - The account ID
+     * @returns {Array} Array of vote records with candidate info
+     */
+    static async getVotesByAccount(accountId) {
+        try {
+            const sql = `
+                SELECT v.vote_id, v.account_id, v.candidate_id, v.vote_timestamp,
+                       c.candidate_name, c.candidate_party, c.candidate_description
+                FROM votes v
+                JOIN candidates c ON v.candidate_id = c.candidate_id
+                WHERE v.account_id = ?
+                ORDER BY v.vote_timestamp DESC
+            `;
+            const [rows] = await this.pool.execute(sql, [accountId]);
+            return rows;
+        } catch (error) {
+            console.error('Error getting votes by account:', error.message);
+            throw error;
+        }
+    }
+
+    /**
+     * Check which positions an account has voted for
+     * @param {number} accountId - The account ID
+     * @returns {Array} Array of positions the account has voted for
+     */
+    static async getVotedPositions(accountId) {
+        try {
+            const sql = `
+                SELECT DISTINCT c.candidate_party as position
+                FROM votes v
+                JOIN candidates c ON v.candidate_id = c.candidate_id
+                WHERE v.account_id = ?
+            `;
+            const [rows] = await this.pool.execute(sql, [accountId]);
+            return rows.map(row => row.position);
+        } catch (error) {
+            console.error('Error getting voted positions:', error.message);
+            throw error;
+        }
+    }
+
+    /**
      * Get all votes
      * @returns {Array} Array of vote records
      */
     static async getAllVotes() {
         try {
-            const sql = 'SELECT * FROM votes';
+            const sql = `
+                SELECT v.vote_id, v.account_id, v.candidate_id, v.vote_timestamp,
+                       a.account_name, c.candidate_name, c.candidate_party
+                FROM votes v
+                JOIN accounts a ON v.account_id = a.account_id
+                JOIN candidates c ON v.candidate_id = c.candidate_id
+                ORDER BY v.vote_timestamp DESC
+            `;
             const [rows] = await this.pool.execute(sql);
             return rows;
         } catch (error) {

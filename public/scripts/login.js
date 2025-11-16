@@ -1,3 +1,5 @@
+// login.js
+
 const loginForm = document.getElementById('loginForm');
 const errorMessage = document.getElementById('errorMessage');
 const successMessage = document.getElementById('successMessage');
@@ -31,11 +33,15 @@ loginForm.addEventListener('submit', async (e) => {
     const accountId = document.getElementById('account_id').value;
     const accountPassword = document.getElementById('account_password').value;
 
+    console.log('=== Login Attempt ===');
+    console.log('Account ID:', accountId);
+
     // Disable button during request
     loginBtn.disabled = true;
     loginBtn.textContent = 'Logging in...';
 
     try {
+        console.log('Sending login request...');
         const response = await fetch('http://localhost:3000/api/accounts/login', {
             method: 'POST',
             headers: {
@@ -48,8 +54,12 @@ loginForm.addEventListener('submit', async (e) => {
         });
 
         const data = await response.json();
+        console.log('Login response:', data);
 
         if (data.success) {
+            console.log('✓ Login successful!');
+            console.log('User data:', data.data);
+            
             showSuccess('Login successful! Redirecting...');
             
             // Store user session data
@@ -57,15 +67,21 @@ loginForm.addEventListener('submit', async (e) => {
             sessionStorage.setItem('accountName', data.data.accountName);
             sessionStorage.setItem('accountRole', data.data.accountRole);
             
+            console.log('Session data stored:', {
+                accountId: sessionStorage.getItem('accountId'),
+                accountName: sessionStorage.getItem('accountName'),
+                accountRole: sessionStorage.getItem('accountRole')
+            });
+            
             // Redirect based on role
+            const redirectUrl = data.data.accountRole === 'admin' ? 'admin-dashboard.html' : 'voter-dashboard.html';
+            console.log('Redirecting to:', redirectUrl);
+            
             setTimeout(() => {
-                if (data.data.accountRole === 'admin') {
-                    window.location.href = 'admin-dashboard.html';
-                } else {
-                    window.location.href = 'voter-dashboard.html';
-                }
+                window.location.href = redirectUrl;
             }, 1500);
         } else {
+            console.error('Login failed:', data.message);
             showError(data.message || 'Login failed. Please try again.');
         }
     } catch (error) {

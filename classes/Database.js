@@ -160,10 +160,11 @@ class Database {
      */
     static async addCandidate(candidate) {
         try {
-            const sql = 'INSERT INTO candidates (candidate_name, candidate_party, candidate_description, current_votes) VALUES (?, ?, ?, ?)';
+            const sql = 'INSERT INTO candidates (candidate_name, candidate_party, candidate_position, candidate_description, current_votes) VALUES (?, ?, ?, ?, ?)';
             const [result] = await this.pool.execute(sql, [
                 candidate.candidateName,
                 candidate.candidateParty,
+                candidate.candidatePosition || '',
                 candidate.candidateDescription,
                 candidate.currentVotes || 0
             ]);

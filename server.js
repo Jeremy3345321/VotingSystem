@@ -296,18 +296,19 @@ app.get('/api/candidates/:id', async (req, res) => {
  */
 app.post('/api/candidates', async (req, res) => {
     try {
-        const { candidateName, candidateParty, candidateDescription } = req.body;
+        const { candidateName, candidateParty, candidatePosition, candidateDescription } = req.body;
 
-        if (!candidateName || !candidateParty) {
+        if (!candidateName || !candidateParty || !candidatePosition) {
             return res.status(400).json({ 
                 success: false, 
-                message: 'Candidate name and party are required' 
+                message: 'Candidate name, party, and position are required' 
             });
         }
 
         const candidate = {
             candidateName: candidateName,
             candidateParty: candidateParty,
+            candidatePosition: candidatePosition,
             candidateDescription: candidateDescription || '',
             currentVotes: 0
         };
@@ -327,7 +328,7 @@ app.post('/api/candidates', async (req, res) => {
             message: 'Internal server error' 
         });
     }
-});
+})
 
 // ==================== VOTE API ROUTES ====================
 

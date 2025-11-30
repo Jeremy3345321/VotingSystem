@@ -17,12 +17,6 @@ class Database {
     static pool = mysql.createPool(dbConfig);
 
     // ==================== ACCOUNT MANAGEMENT ====================
-
-    /**
-     * Add a new account to the database
-     * @param {Object|Account} account - Account object or Account instance
-     * @returns {Object|Account} Account object with generated accountId
-     */
     static async addAccount(account) {
         try {
             // Convert Account instance to plain object if needed
@@ -31,8 +25,9 @@ class Database {
             // Hash the password before storing
             const hashedPassword = await bcrypt.hash(accountData.accountPassword, 10);
             
-            const sql = 'INSERT INTO accounts (account_name, account_password, account_role, has_voted) VALUES (?, ?, ?, ?)';
+            const sql = 'INSERT INTO accounts (user_id, account_name, account_password, account_role, has_voted) VALUES (?, ?, ?, ?, ?)';
             const [result] = await this.pool.execute(sql, [
+                accountData.userId,
                 accountData.accountName,
                 hashedPassword,
                 accountData.accountRole || 'voter',
@@ -42,11 +37,11 @@ class Database {
             // Update the account object with the new ID
             if (account instanceof Account) {
                 account.accountId = result.insertId;
-                console.log(`Account added: ${account.accountName} (ID: ${account.accountId})`);
+                console.log(`Account added: ${account.accountName} (ID: ${account.accountId}, User ID: ${account.userId})`);
                 return account;
             } else {
                 accountData.accountId = result.insertId;
-                console.log(`Account added: ${accountData.accountName} (ID: ${accountData.accountId})`);
+                console.log(`Account added: ${accountData.accountName} (ID: ${accountData.accountId}, User ID: ${accountData.userId})`);
                 return accountData;
             }
         } catch (error) {
@@ -70,8 +65,9 @@ class Database {
                 passwordToStore = await bcrypt.hash(accountData.accountPassword, 10);
             }
             
-            const sql = 'UPDATE accounts SET account_name = ?, account_password = ?, account_role = ?, has_voted = ? WHERE account_id = ?';
+            const sql = 'UPDATE accounts SET user_id = ?, account_name = ?, account_password = ?, account_role = ?, has_voted = ? WHERE account_id = ?';
             await this.pool.execute(sql, [
+                accountData.userId,
                 accountData.accountName,
                 passwordToStore,
                 accountData.accountRole,
@@ -87,7 +83,7 @@ class Database {
     }
 
     /**
-     * Get an account by ID
+     * Get an account by account ID
      * @param {number} accountId - The account ID
      * @returns {Object|null} Account object or null if not found
      */
@@ -107,7 +103,57 @@ class Database {
     }
 
     /**
-     * Verify account credentials for login
+     * Get an account by user ID
+     * @param {string} userId - The user ID
+     * @returns {Object|null} Account object or null if not found
+     */
+    static async getAccountByUserId(userId) {
+        try {
+            const sql = 'SELECT * FROM accounts WHERE user_id = ?';
+            const [rows] = await this.pool.execute(sql, [userId]);
+            
+            if (rows.length > 0) {
+                return rows[0];
+            }
+            return null;
+        } catch (error) {
+            console.error('Error getting account by user ID:', error.message);
+            throw error;
+        }
+    }
+
+    /**
+     * Verify account credentials for login using user ID
+     * @param {string} userId - The user ID
+     * @param {string} password - The plain text password
+     * @returns {Object|null} Account object if credentials are valid, null otherwise
+     */
+    static async verifyAccountByUserId(userId, password) {
+        try {
+            const account = await this.getAccountByUserId(userId);
+            
+            if (!account) {
+                return null;
+            }
+
+            // Compare the provided password with the hashed password
+            const isValid = await bcrypt.compare(password, account.account_password);
+            
+            if (isValid) {
+                // Don't return the password hash
+                delete account.account_password;
+                return account;
+            }
+            
+            return null;
+        } catch (error) {
+            console.error('Error verifying account:', error.message);
+            throw error;
+        }
+    }
+
+    /**
+     * Verify account credentials for login (legacy support using account_id)
      * @param {number} accountId - The account ID
      * @param {string} password - The plain text password
      * @returns {Object|null} Account object if credentials are valid, null otherwise
@@ -142,7 +188,7 @@ class Database {
      */
     static async getAllAccounts() {
         try {
-            const sql = 'SELECT account_id, account_name, account_role, has_voted FROM accounts';
+            const sql = 'SELECT account_id, user_id, account_name, account_role, has_voted FROM accounts';
             const [rows] = await this.pool.execute(sql);
             return rows;
         } catch (error) {
@@ -150,6 +196,7 @@ class Database {
             throw error;
         }
     }
+
 
     // ==================== CANDIDATE MANAGEMENT ====================
 
@@ -248,6 +295,39 @@ class Database {
         } catch (error) {
             console.error('Error getting candidates by position:', error.message);
             throw error;
+        }
+    }
+
+    /**
+     * Delete a candidate from the database
+     * @param {number} candidateId - The candidate ID to delete
+     */
+    static async deleteCandidate(candidateId) {
+        const connection = await this.pool.getConnection();
+        
+        try {
+            await connection.beginTransaction();
+
+            // First, delete all votes for this candidate
+            await connection.execute(
+                'DELETE FROM votes WHERE candidate_id = ?',
+                [candidateId]
+            );
+
+            // Then delete the candidate
+            await connection.execute(
+                'DELETE FROM candidates WHERE candidate_id = ?',
+                [candidateId]
+            );
+
+            await connection.commit();
+            console.log(`Candidate deleted: ID ${candidateId}`);
+        } catch (error) {
+            await connection.rollback();
+            console.error('Error deleting candidate:', error.message);
+            throw error;
+        } finally {
+            connection.release();
         }
     }
 

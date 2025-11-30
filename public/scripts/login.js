@@ -1,94 +1,80 @@
 // login.js
 
-const loginForm = document.getElementById('loginForm');
-const errorMessage = document.getElementById('errorMessage');
-const successMessage = document.getElementById('successMessage');
-const loginBtn = document.getElementById('loginBtn');
+const API_BASE_URL = 'http://localhost:3000/api';
 
-// Show error message
-function showError(message) {
-    errorMessage.textContent = message;
-    errorMessage.classList.add('show');
-    successMessage.classList.remove('show');
-}
-
-// Show success message
-function showSuccess(message) {
-    successMessage.textContent = message;
-    successMessage.classList.add('show');
-    errorMessage.classList.remove('show');
-}
-
-// Hide all messages
-function hideMessages() {
-    errorMessage.classList.remove('show');
-    successMessage.classList.remove('show');
-}
-
-// Handle form submission
-loginForm.addEventListener('submit', async (e) => {
+document.getElementById('loginForm').addEventListener('submit', async (e) => {
     e.preventDefault();
-    hideMessages();
-
-    const accountId = document.getElementById('account_id').value;
-    const accountPassword = document.getElementById('account_password').value;
-
-    console.log('=== Login Attempt ===');
-    console.log('Account ID:', accountId);
-
-    // Disable button during request
+    
+    const userId = document.getElementById('user_id').value.trim();
+    const password = document.getElementById('account_password').value;
+    
+    if (!userId || !password) {
+        showError('Please fill in all fields');
+        return;
+    }
+    
+    const loginBtn = document.getElementById('loginBtn');
     loginBtn.disabled = true;
     loginBtn.textContent = 'Logging in...';
-
+    
     try {
-        console.log('Sending login request...');
-        const response = await fetch('http://localhost:3000/api/accounts/login', {
+        const response = await fetch(`${API_BASE_URL}/accounts/login`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                accountId: parseInt(accountId),
-                accountPassword: accountPassword
+                userId: userId,
+                accountPassword: password
             })
         });
-
+        
         const data = await response.json();
-        console.log('Login response:', data);
-
+        
         if (data.success) {
-            console.log('✓ Login successful!');
-            console.log('User data:', data.data);
-            
-            showSuccess('Login successful! Redirecting...');
-            
-            // Store user session data
             sessionStorage.setItem('accountId', data.data.accountId);
             sessionStorage.setItem('accountName', data.data.accountName);
             sessionStorage.setItem('accountRole', data.data.accountRole);
+            sessionStorage.setItem('hasVoted', data.data.hasVoted);
             
-            console.log('Session data stored:', {
-                accountId: sessionStorage.getItem('accountId'),
-                accountName: sessionStorage.getItem('accountName'),
-                accountRole: sessionStorage.getItem('accountRole')
-            });
-            
-            // Redirect based on role
-            const redirectUrl = data.data.accountRole === 'admin' ? 'admin-dashboard.html' : 'voter-dashboard.html';
-            console.log('Redirecting to:', redirectUrl);
+            showSuccess('Login successful! Redirecting...');
             
             setTimeout(() => {
-                window.location.href = redirectUrl;
-            }, 1500);
+                if (data.data.accountRole.trim().toLowerCase() === 'admin') {
+                    window.location.href = 'admin-dashboard.html';
+                } else {
+                    window.location.href = 'voter-dashboard.html';
+                }
+            }, 1000);
         } else {
-            console.error('Login failed:', data.message);
-            showError(data.message || 'Login failed. Please try again.');
+            showError(data.message || 'Invalid student ID or password');
+            loginBtn.disabled = false;
+            loginBtn.textContent = 'Login';
         }
     } catch (error) {
         console.error('Login error:', error);
-        showError('Unable to connect to server. Please try again later.');
-    } finally {
+        showError('Error connecting to server. Please try again.');
         loginBtn.disabled = false;
         loginBtn.textContent = 'Login';
     }
 });
+
+function showError(message) {
+    const errorDiv = document.getElementById('errorMessage');
+    errorDiv.textContent = message;
+    errorDiv.style.display = 'block';
+    
+    document.getElementById('successMessage').style.display = 'none';
+    
+    setTimeout(() => {
+        errorDiv.style.display = 'none';
+    }, 5000);
+}
+
+function showSuccess(message) {
+    const successDiv = document.getElementById('successMessage');
+    successDiv.textContent = message;
+    successDiv.style.display = 'block';
+    
+    document.getElementById('errorMessage').style.display = 'none';
+}

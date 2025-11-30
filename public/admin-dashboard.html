@@ -151,6 +151,16 @@
             background: #e0e0e0;
         }
 
+        .btn-modal-delete {
+            background: #ff4757;
+            color: white;
+        }
+
+        .btn-modal-delete:hover {
+            background: #ee5a6f;
+            transform: translateY(-2px);
+        }
+
         /* Add Candidate Button */
         .add-candidate-section {
             display: flex;
@@ -215,6 +225,17 @@
             color: #667eea;
             font-size: 32px;
             font-weight: 700;
+        }
+
+        /* Make candidate cards clickable */
+        .candidate-card {
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .candidate-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
         }
     </style>
 </head>
@@ -306,7 +327,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h2>Add New Candidate</h2>
-                <button class="close-btn" id="closeModalBtn">&times;</button>
+                <button class="close-btn" id="closeAddModalBtn">&times;</button>
             </div>
             <form id="addCandidateForm">
                 <div class="form-group">
@@ -332,8 +353,52 @@
                     <textarea id="candidateDescription" placeholder="Enter candidate description, qualifications, or platform..."></textarea>
                 </div>
                 <div class="modal-buttons">
-                    <button type="button" class="btn-modal btn-modal-cancel" id="cancelBtn">Cancel</button>
+                    <button type="button" class="btn-modal btn-modal-cancel" id="cancelAddBtn">Cancel</button>
                     <button type="submit" class="btn-modal btn-modal-submit">Add Candidate</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Candidate Modal -->
+    <div class="modal" id="editCandidateModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Edit Candidate</h2>
+                <button class="close-btn" id="closeEditModalBtn">&times;</button>
+            </div>
+            <form id="editCandidateForm">
+                <input type="hidden" id="editCandidateId">
+                <div class="form-group">
+                    <label for="editCandidateName">Candidate Name *</label>
+                    <input type="text" id="editCandidateName" required placeholder="Enter candidate name">
+                </div>
+                <div class="form-group">
+                    <label for="editCandidateParty">Running For Position *</label>
+                    <select id="editCandidateParty" required>
+                        <option value="">Select Position</option>
+                        <option value="President">President</option>
+                        <option value="Vice President">Vice President</option>
+                        <option value="Secretary">Secretary</option>
+                        <option value="Treasurer">Treasurer</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="editCandidatePosition">Current Position/Role *</label>
+                    <input type="text" id="editCandidatePosition" required placeholder="e.g., Class Representative, Club President">
+                </div>
+                <div class="form-group">
+                    <label for="editCandidateDescription">Description</label>
+                    <textarea id="editCandidateDescription" placeholder="Enter candidate description, qualifications, or platform..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Current Votes</label>
+                    <input type="text" id="editCandidateVotes" disabled style="background-color: #f5f5f5;">
+                </div>
+                <div class="modal-buttons">
+                    <button type="button" class="btn-modal btn-modal-delete" id="deleteCandidateBtn">Delete</button>
+                    <button type="button" class="btn-modal btn-modal-cancel" id="cancelEditBtn">Cancel</button>
+                    <button type="submit" class="btn-modal btn-modal-submit">Update</button>
                 </div>
             </form>
         </div>

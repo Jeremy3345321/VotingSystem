@@ -1,6 +1,9 @@
+//admin-dashboard.js
+
 const API_BASE_URL = 'http://localhost:3000/api';
 let accountId = null;
 let accountName = null;
+let currentEditingCandidate = null;
 
 // Initialize dashboard
 async function init() {
@@ -26,17 +29,29 @@ async function init() {
     await loadStatistics();
     await loadAllCandidates();
 
-    // Setup event listeners
+    // Setup event listeners for Add Modal
     document.getElementById('logoutBtn').addEventListener('click', logout);
-    document.getElementById('addCandidateBtn').addEventListener('click', openModal);
-    document.getElementById('closeModalBtn').addEventListener('click', closeModal);
-    document.getElementById('cancelBtn').addEventListener('click', closeModal);
+    document.getElementById('addCandidateBtn').addEventListener('click', openAddModal);
+    document.getElementById('closeAddModalBtn').addEventListener('click', closeAddModal);
+    document.getElementById('cancelAddBtn').addEventListener('click', closeAddModal);
     document.getElementById('addCandidateForm').addEventListener('submit', handleAddCandidate);
 
-    // Close modal on outside click
+    // Setup event listeners for Edit Modal
+    document.getElementById('closeEditModalBtn').addEventListener('click', closeEditModal);
+    document.getElementById('cancelEditBtn').addEventListener('click', closeEditModal);
+    document.getElementById('editCandidateForm').addEventListener('submit', handleEditCandidate);
+    document.getElementById('deleteCandidateBtn').addEventListener('click', handleDeleteCandidate);
+
+    // Close modals on outside click
     document.getElementById('addCandidateModal').addEventListener('click', (e) => {
         if (e.target.id === 'addCandidateModal') {
-            closeModal();
+            closeAddModal();
+        }
+    });
+
+    document.getElementById('editCandidateModal').addEventListener('click', (e) => {
+        if (e.target.id === 'editCandidateModal') {
+            closeEditModal();
         }
     });
     
@@ -132,10 +147,11 @@ function renderPosition(position, candidates) {
     });
 }
 
-// Create candidate card element
+// Create candidate card element (clickable)
 function createCandidateCard(candidate) {
     const card = document.createElement('div');
     card.className = 'candidate-card';
+    card.style.cursor = 'pointer';
 
     card.innerHTML = `
         <div class="candidate-name">${candidate.candidate_name}</div>
@@ -144,16 +160,20 @@ function createCandidateCard(candidate) {
         <div class="candidate-votes">Current Votes: ${candidate.current_votes}</div>
     `;
 
+    // Add click event to open edit modal
+    card.addEventListener('click', () => openEditModal(candidate));
+
     return card;
 }
 
-// Modal functions
-function openModal() {
+// ==================== ADD MODAL FUNCTIONS ====================
+
+function openAddModal() {
     document.getElementById('addCandidateModal').classList.add('show');
     document.getElementById('candidateName').focus();
 }
 
-function closeModal() {
+function closeAddModal() {
     document.getElementById('addCandidateModal').classList.remove('show');
     document.getElementById('addCandidateForm').reset();
 }
@@ -190,7 +210,7 @@ async function handleAddCandidate(e) {
 
         if (data.success) {
             showAlert('Candidate added successfully!', 'success');
-            closeModal();
+            closeAddModal();
             await loadStatistics();
             await loadAllCandidates();
         } else {
@@ -201,6 +221,104 @@ async function handleAddCandidate(e) {
         showAlert(error.message || 'Error adding candidate. Please try again.', 'error');
     }
 }
+
+// ==================== EDIT MODAL FUNCTIONS ====================
+
+function openEditModal(candidate) {
+    currentEditingCandidate = candidate;
+    
+    document.getElementById('editCandidateId').value = candidate.candidate_id;
+    document.getElementById('editCandidateName').value = candidate.candidate_name;
+    document.getElementById('editCandidateParty').value = candidate.candidate_party;
+    document.getElementById('editCandidatePosition').value = candidate.candidate_position || '';
+    document.getElementById('editCandidateDescription').value = candidate.candidate_description || '';
+    document.getElementById('editCandidateVotes').value = candidate.current_votes;
+    
+    document.getElementById('editCandidateModal').classList.add('show');
+}
+
+function closeEditModal() {
+    document.getElementById('editCandidateModal').classList.remove('show');
+    document.getElementById('editCandidateForm').reset();
+    currentEditingCandidate = null;
+}
+
+// Handle edit candidate form submission
+async function handleEditCandidate(e) {
+    e.preventDefault();
+
+    const candidateId = document.getElementById('editCandidateId').value;
+    const candidateName = document.getElementById('editCandidateName').value.trim();
+    const candidateParty = document.getElementById('editCandidateParty').value;
+    const candidatePosition = document.getElementById('editCandidatePosition').value.trim();
+    const candidateDescription = document.getElementById('editCandidateDescription').value.trim();
+
+    if (!candidateName || !candidateParty || !candidatePosition) {
+        showAlert('Please fill in all required fields', 'error');
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/candidates/${candidateId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                candidateName,
+                candidateParty,
+                candidatePosition,
+                candidateDescription,
+                currentVotes: currentEditingCandidate.current_votes
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            showAlert('Candidate updated successfully!', 'success');
+            closeEditModal();
+            await loadStatistics();
+            await loadAllCandidates();
+        } else {
+            throw new Error(data.message);
+        }
+    } catch (error) {
+        console.error('Error updating candidate:', error);
+        showAlert(error.message || 'Error updating candidate. Please try again.', 'error');
+    }
+}
+
+// Handle delete candidate
+async function handleDeleteCandidate() {
+    if (!currentEditingCandidate) return;
+
+    const confirmed = confirm(`Are you sure you want to delete ${currentEditingCandidate.candidate_name}?\n\nThis action cannot be undone.`);
+    
+    if (!confirmed) return;
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/candidates/${currentEditingCandidate.candidate_id}`, {
+            method: 'DELETE'
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            showAlert('Candidate deleted successfully!', 'success');
+            closeEditModal();
+            await loadStatistics();
+            await loadAllCandidates();
+        } else {
+            throw new Error(data.message);
+        }
+    } catch (error) {
+        console.error('Error deleting candidate:', error);
+        showAlert(error.message || 'Error deleting candidate. Please try again.', 'error');
+    }
+}
+
+// ==================== UTILITY FUNCTIONS ====================
 
 // Show alert message
 function showAlert(message, type = 'info') {

@@ -47,13 +47,20 @@ app.get('/voter-dashboard', (req, res) => {
  */
 app.post('/api/accounts/register', async (req, res) => {
     try {
-        const { accountName, accountPassword, accountRole } = req.body;
+        const { userId, accountName, accountPassword, accountRole } = req.body;
 
         // Validation
-        if (!accountName || !accountPassword) {
+        if (!userId || !accountName || !accountPassword) {
             return res.status(400).json({ 
                 success: false, 
-                message: 'Account name and password are required' 
+                message: 'User ID, account name and password are required' 
+            });
+        }
+
+        if (userId.length < 3) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'User ID must be at least 3 characters' 
             });
         }
 
@@ -71,8 +78,18 @@ app.post('/api/accounts/register', async (req, res) => {
             });
         }
 
+        // Check if user ID already exists
+        const existingAccount = await Database.getAccountByUserId(userId);
+        if (existingAccount) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'User ID already exists' 
+            });
+        }
+
         // Create account object
         const account = {
+            userId: userId,
             accountName: accountName,
             accountPassword: accountPassword,
             accountRole: accountRole || 'voter',
@@ -87,6 +104,7 @@ app.post('/api/accounts/register', async (req, res) => {
             message: 'Account registered successfully',
             data: {
                 accountId: newAccount.accountId,
+                userId: newAccount.userId,
                 accountName: newAccount.accountName,
                 accountRole: newAccount.accountRole
             }
@@ -101,35 +119,41 @@ app.post('/api/accounts/register', async (req, res) => {
     }
 });
 
+
 /**
  * Login account
  * POST /api/accounts/login
  * Body: { accountId, accountPassword }
  */
+/**
+ * Login account
+ * POST /api/accounts/login
+ * Body: { userId, accountPassword }
+ */
 app.post('/api/accounts/login', async (req, res) => {
     console.log('=== Login Request ===');
-    console.log('Request body:', { accountId: req.body.accountId, hasPassword: !!req.body.accountPassword });
+    console.log('Request body:', { userId: req.body.userId, hasPassword: !!req.body.accountPassword });
     
     try {
-        const { accountId, accountPassword } = req.body;
+        const { userId, accountPassword } = req.body;
 
-        if (!accountId || !accountPassword) {
+        if (!userId || !accountPassword) {
             console.log('✗ Missing credentials');
             return res.status(400).json({ 
                 success: false, 
-                message: 'Account ID and password are required' 
+                message: 'User ID and password are required' 
             });
         }
 
         // Verify account using Database class
-        console.log('Verifying account:', accountId);
-        const account = await Database.verifyAccount(accountId, accountPassword);
+        console.log('Verifying account:', userId);
+        const account = await Database.verifyAccountByUserId(userId, accountPassword);
 
         if (!account) {
-            console.log('✗ Invalid credentials for account:', accountId);
+            console.log('✗ Invalid credentials for user:', userId);
             return res.status(401).json({ 
                 success: false, 
-                message: 'Invalid account ID or password' 
+                message: 'Invalid user ID or password' 
             });
         }
 
@@ -140,8 +164,9 @@ app.post('/api/accounts/login', async (req, res) => {
             message: 'Login successful',
             data: {
                 accountId: account.account_id,
+                userId: account.user_id,
                 accountName: account.account_name,
-                accountRole: account.account_role.trim().toLowerCase(), // Normalize role
+                accountRole: account.account_role.trim().toLowerCase(),
                 hasVoted: account.has_voted
             }
         });
@@ -212,6 +237,84 @@ app.get('/api/accounts', async (req, res) => {
 });
 
 // ==================== CANDIDATE API ROUTES ====================
+
+/**
+ * Update a candidate (admin only)
+ * PUT /api/candidates/:id
+ * Body: { candidateName, candidateParty, candidatePosition, candidateDescription, currentVotes }
+ */
+app.put('/api/candidates/:id', async (req, res) => {
+    try {
+        const candidateId = parseInt(req.params.id);
+        const { candidateName, candidateParty, candidatePosition, candidateDescription, currentVotes } = req.body;
+
+        if (!candidateName || !candidateParty || !candidatePosition) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Candidate name, party, and position are required' 
+            });
+        }
+
+        const candidate = {
+            candidateId: candidateId,
+            candidateName: candidateName,
+            candidateParty: candidateParty,
+            candidatePosition: candidatePosition,
+            candidateDescription: candidateDescription || '',
+            currentVotes: currentVotes || 0
+        };
+
+        await Database.updateCandidate(candidate);
+
+        res.json({
+            success: true,
+            message: 'Candidate updated successfully',
+            data: candidate
+        });
+
+    } catch (error) {
+        console.error('Update candidate error:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Internal server error' 
+        });
+    }
+});
+
+/**
+ * Delete a candidate (admin only)
+ * DELETE /api/candidates/:id
+ */
+app.delete('/api/candidates/:id', async (req, res) => {
+    try {
+        const candidateId = parseInt(req.params.id);
+
+        // Check if candidate exists
+        const candidate = await Database.getCandidate(candidateId);
+        
+        if (!candidate) {
+            return res.status(404).json({ 
+                success: false, 
+                message: 'Candidate not found' 
+            });
+        }
+
+        // Delete candidate
+        await Database.deleteCandidate(candidateId);
+
+        res.json({
+            success: true,
+            message: 'Candidate deleted successfully'
+        });
+
+    } catch (error) {
+        console.error('Delete candidate error:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Internal server error' 
+        });
+    }
+});
 
 /**
  * Get all candidates

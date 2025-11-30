@@ -7,8 +7,9 @@ class Account {
     };
 
     // Fields
-    constructor(accountId, accountPassword, accountName, accountRole) {
+    constructor(accountId, userId, accountPassword, accountName, accountRole) {
         this.accountId = accountId;
+        this.userId = userId;
         this.accountPassword = accountPassword;
         this.accountName = accountName;
         this.accountRole = accountRole;
@@ -117,6 +118,7 @@ class Account {
     static fromDatabaseRow(row) {
         const account = new Account(
             row.account_id,
+            row.user_id,
             row.account_password,
             row.account_name,
             row.account_role
@@ -132,6 +134,7 @@ class Account {
     toDatabaseObject() {
         return {
             accountId: this.accountId,
+            userId: this.userId,
             accountName: this.accountName,
             accountPassword: this.accountPassword,
             accountRole: this.accountRole,

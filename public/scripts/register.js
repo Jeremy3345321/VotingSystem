@@ -1,92 +1,97 @@
-//register.js
+// register.js
 
-const registerForm = document.getElementById('registerForm');
-const errorMessage = document.getElementById('errorMessage');
-const successMessage = document.getElementById('successMessage');
-const registerBtn = document.getElementById('registerBtn');
+const API_BASE_URL = 'http://localhost:3000/api';
 
-// Show error message
-function showError(message) {
-    errorMessage.textContent = message;
-    errorMessage.classList.add('show');
-    successMessage.classList.remove('show');
-}
-
-// Show success message
-function showSuccess(message) {
-    successMessage.textContent = message;
-    successMessage.classList.add('show');
-    errorMessage.classList.remove('show');
-}
-
-// Hide all messages
-function hideMessages() {
-    errorMessage.classList.remove('show');
-    successMessage.classList.remove('show');
-}
-
-// Handle form submission
-registerForm.addEventListener('submit', async (e) => {
+document.getElementById('registerForm').addEventListener('submit', async (e) => {
     e.preventDefault();
-    hideMessages();
-
+    
+    const userId = document.getElementById('user_id').value.trim();
     const accountName = document.getElementById('account_name').value.trim();
-    const accountPassword = document.getElementById('account_password').value;
+    const password = document.getElementById('account_password').value;
     const confirmPassword = document.getElementById('confirm_password').value;
+    
+    if (!userId || !accountName || !password || !confirmPassword) {
+        showError('Please fill in all fields');
+        return;
+    }
 
-    // Validation
+    if (userId.length < 3) {
+        showError('User ID must be at least 3 characters');
+        return;
+    }
+    
     if (accountName.length < 3) {
-        showError('Name must be at least 3 characters long');
+        showError('Name must be at least 3 characters');
         return;
     }
-
-    if (accountPassword.length < 6) {
-        showError('Password must be at least 6 characters long');
+    
+    if (password.length < 6) {
+        showError('Password must be at least 6 characters');
         return;
     }
-
-    if (accountPassword !== confirmPassword) {
+    
+    if (password !== confirmPassword) {
         showError('Passwords do not match');
         return;
     }
-
-    // Disable button during request
+    
+    const registerBtn = document.getElementById('registerBtn');
     registerBtn.disabled = true;
-    registerBtn.textContent = 'Creating account...';
-
+    registerBtn.textContent = 'Registering...';
+    
     try {
-        const response = await fetch('http://localhost:3000/api/accounts/register', {
+        const response = await fetch(`${API_BASE_URL}/accounts/register`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
+                userId: userId,
                 accountName: accountName,
-                accountPassword: accountPassword,
-                accountRole: 'voter' // Default role
+                accountPassword: password,
+                accountRole: 'voter'
             })
         });
-
+        
         const data = await response.json();
-
+        
         if (data.success) {
-            showSuccess(`Account created successfully! Redirecting...`);
+            showSuccess('Registration successful! Redirecting to login...');
             
-            // Clear form
-            registerForm.reset();
+            document.getElementById('registerForm').reset();
             
-            // Redirect to login after 3 seconds
             setTimeout(() => {
                 window.location.href = 'login.html';
             }, 2000);
         } else {
-            showError(data.message || 'Registration failed. Please try again.');
+            showError(data.message || 'Registration failed');
+            registerBtn.disabled = false;
+            registerBtn.textContent = 'Register';
         }
     } catch (error) {
         console.error('Registration error:', error);
-        showError('Unable to connect to server. Please try again later.');
-    } finally {
+        showError('Error connecting to server. Please try again.');
         registerBtn.disabled = false;
         registerBtn.textContent = 'Register';
     }
 });
+
+function showError(message) {
+    const errorDiv = document.getElementById('errorMessage');
+    errorDiv.textContent = message;
+    errorDiv.style.display = 'block';
+    
+    document.getElementById('successMessage').style.display = 'none';
+    
+    setTimeout(() => {
+        errorDiv.style.display = 'none';
+    }, 5000);
+}
+
+function showSuccess(message) {
+    const successDiv = document.getElementById('successMessage');
+    successDiv.textContent = message;
+    successDiv.style.display = 'block';
+    
+    document.getElementById('errorMessage').style.display = 'none';
+}

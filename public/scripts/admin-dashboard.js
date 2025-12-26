@@ -68,7 +68,11 @@ async function loadStatistics() {
         ]);
 
         const totalCandidates = candidates.data?.length || 0;
-        const voters = accounts.data?.filter(a => a.account_role === 'voter') || [];
+        
+        const voters = accounts.data?.filter(a => 
+            a.account_role.trim().toLowerCase() === 'voter'
+        ) || [];
+        
         const totalVoters = voters.length;
         const votedVoters = voters.filter(v => v.has_voted === 1).length;
         const totalVotes = votes.data?.length || 0;
